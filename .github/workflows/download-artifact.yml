@@ -1,0 +1,28 @@
+name: Download Artifact
+
+on:
+  workflow_dispatch:
+    inputs:
+      download_url:
+        description: 'The URL to download the file from'
+        required: true
+        default: 'https://huggingface.co/microsoft/Phi-4-mini-instruct/resolve/main/model-00001-of-00002.safetensors?download=true'
+
+jobs:
+  download:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v2
+
+      - name: Download file
+        run: |
+          echo "Downloading file from ${{ github.event.inputs.download_url }}"
+          curl -L -o downloaded_file.zip ${{ github.event.inputs.download_url }}
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v2
+        with:
+          name: downloaded-file
+          path: downloaded_file.zip
