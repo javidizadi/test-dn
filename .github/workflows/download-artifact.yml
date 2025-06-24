@@ -1,28 +1,38 @@
-name: Download Artifact
+name: Docker Image Puller
 
 on:
   workflow_dispatch:
     inputs:
-      download_url:
-        description: 'The URL to download the file from'
+      docker_image:
+        description: 'Docker image to pull (format: image:tag)'
         required: true
-        default: 'https://huggingface.co/microsoft/Phi-4-mini-instruct/resolve/main/model-00001-of-00002.safetensors?download=true'
+        type: string
 
 jobs:
-  download:
+  pull-and-save:
     runs-on: ubuntu-latest
-
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v2
+      - name: Checkout repository
+        uses: actions/checkout@v3
 
-      - name: Download file
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v2
+
+      - name: Pull Docker image
+        run: docker pull ${{ github.event.inputs.docker_image }}
+        
+      - name: Extract image name for artifact
+        id: image-name
         run: |
-          echo "Downloading file from ${{ github.event.inputs.download_url }}"
-          curl -L -o downloaded_file.zip ${{ github.event.inputs.download_url }}
+          IMAGE_NAME=$(echo "${{ github.event.inputs.docker_image }}" | sed 's/[\/:]/-/g')
+          echo "IMAGE_NAME=$IMAGE_NAME" >> $GITHUB_ENV
 
-      - name: Upload artifact
-        uses: actions/upload-artifact@v4
+      - name: Save Docker image as tar
+        run: docker save ${{ github.event.inputs.docker_image }} -o ${{ env.IMAGE_NAME }}.tar
+
+      - name: Upload Docker image artifact
+        uses: actions/upload-artifact@v3
         with:
-          name: downloaded-file
-          path: downloaded_file.zip
+          name: docker-image-${{ env.IMAGE_NAME }}
+          path: ${{ env.IMAGE_NAME }}.tar
+          retention-days: 1
